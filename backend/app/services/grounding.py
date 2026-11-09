@@ -62,7 +62,8 @@ def _email_from_validated_minutes(data: dict[str, Any]) -> str:
     """Build email only from fields that have passed source validation."""
     title = data.get("meeting_title")
     subject = f"Follow-up: {title}" if isinstance(title, str) and title else "Meeting follow-up"
-    lines = [f"Subject: {subject}", "", "Hi everyone,", "", "Here is the meeting recap."]
+    greeting = "Hi everyone," if data.get("attendees") else "Hello,"
+    lines = [f"Subject: {subject}", "", greeting, "", "Here is the meeting recap."]
     decisions = data["decisions"]
     actions = data["action_items"]
     if decisions:
@@ -82,7 +83,7 @@ def _email_from_validated_minutes(data: dict[str, Any]) -> str:
                 detail += f" — Deadline: {deadline}"
             lines.append(detail)
     if not decisions and not actions:
-        lines.extend(["", "No confirmed decisions or assigned action items were recorded in the supplied source."])
+        lines.extend(["", "No source-verified decisions or assigned action items are available to include."])
     lines.extend(["", "Please review and correct anything that does not match the meeting.", "", "Regards,"])
     return "\n".join(lines)
 
