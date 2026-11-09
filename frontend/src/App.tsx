@@ -56,6 +56,10 @@ export default function App() {
       setError("Choose a PDF, text file, or audio recording first.");
       return;
     }
+    if (useBatch && (language === "gu-IN" || language === "pa-IN")) {
+      setError("Gnani Batch STT does not currently list Gujarati or Punjabi. Turn off Batch STT to use the short-clip REST route.");
+      return;
+    }
     setBusy("upload");
     setError("");
     setOutput("");
