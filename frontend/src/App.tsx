@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -18,7 +19,71 @@ type BatchResult = {
   file_results?: Array<{ original_path?: string; status?: string; error_message?: string }>;
 };
 
-async function readError(response: Response): Promise<string> {
+
+const sectionLabels: Record<string, string> = {
+  meeting_title: "Meeting title", date: "Date", attendees: "Attendees",
+  executive_summary: "Executive summary", agenda: "Agenda",
+  discussion_points: "Discussion points", decisions: "Decisions",
+  action_items: "Action items", open_questions: "Open questions",
+  risks_and_dependencies: "Risks and dependencies", follow_up_email: "Follow-up email",
+  title: "Title", topic_summary: "Topic summary", topic_wise_notes: "Topic-wise notes",
+  definitions: "Definitions", formulas: "Formulas", examples: "Examples",
+  key_takeaways: "Key takeaways", revision_sheet: "Revision sheet",
+  practice_questions: "Practice questions",
+};
+
+function readable(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "Not specified";
+  if (typeof value === "string" && value.trim().toLowerCase() === "unknown") return "Not available in source";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function StructuredValue({ value }: { value: unknown }): ReactNode {
+  if (Array.isArray(value)) {
+    return <ul className="structured-list">{value.map((item, index) => (
+      <li key={index}><StructuredValue value={item} /></li>
+    ))}</ul>;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([key]) => key !== "evidence" && key !== "source_evidence");
+    return <div className="structured-fields">{entries.map(([key, item]) => (
+      <div className="structured-field" key={key}>
+        <b>{sectionLabels[key] || key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</b>
+        <div><StructuredValue value={item} /></div>
+      </div>
+    ))}</div>;
+  }
+  return <>{readable(value)}</>;
+}
+
+function StructuredOutput({ output }: { output: string }) {
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    const cleaned = output.trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+    const candidate: unknown = JSON.parse(cleaned);
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) parsed = candidate as Record<string, unknown>;
+  } catch {
+    parsed = null;
+  }
+  if (!parsed) return <StructuredOutput output={output} />;
+
+  const entries = Object.entries(parsed).filter(([key, value]) =>
+    key !== "source_evidence" && key !== "evidence" && value !== undefined && value !== ""
+  );
+  return (
+    <div className="structured-output">
+      {entries.map(([key, value]) => (
+        <section className="structured-section" key={key}>
+          <h3>{sectionLabels[key] || key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</h3>
+          <StructuredValue value={value} />
+        </section>
+      ))}
+    </div>
+  );
+}
+\nasync function readError(response: Response): Promise<string> {
   try {
     const body = await response.json();
     const detail = body.detail;
