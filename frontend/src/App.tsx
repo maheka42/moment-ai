@@ -230,7 +230,7 @@ export default function App() {
               />
               <span className="upload-icon">↑</span>
               <b>{file ? file.name : "Choose a file or browse"}</b>
-              <small>PDF, TXT, MP3, WAV, M4A, OGG, FLAC · Up to 50 MB (Batch audio: 10 MB)</small>
+              <small>PDF, TXT, MP3, WAV, M4A, OGG, FLAC · Short audio: ≤30 sec (Batch: ≤10 MB)</small>
             </label>
 
             <div className="upload-options">
