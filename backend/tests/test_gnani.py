@@ -97,7 +97,7 @@ class GnaniAdapterTests(unittest.TestCase):
             self.client.download_batch_transcript("http://example.com/transcript.json")
 
     @patch("backend.app.gnani.requests.post")
-    def test_calls_configured_evon_chat_completions_endpoint(self, post):
+    def test_calls_configured_hosted_llm_chat_completions_endpoint(self, post):
         response = Mock()
         response.ok = True
         response.status_code = 200
@@ -105,17 +105,17 @@ class GnaniAdapterTests(unittest.TestCase):
             "choices": [{"message": {"content": '{"title": "Notes"}'}}]
         }
         post.return_value = response
-        self.client.llm_endpoint = "http://gpu-host:8000/v1/chat/completions"
+        self.client.llm_endpoint = "https://api.groq.com/openai/v1/chat/completions"
         self.client.llm_api_key = "runtime-token"
-        generated = self.client.generate_with_evon("Create study notes.")
+        generated = self.client.generate_with_llm("Create study notes.")
         self.assertEqual(generated, '{"title": "Notes"}')
         kwargs = post.call_args.kwargs
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer runtime-token")
         self.assertEqual(kwargs["json"]["model"], self.client.llm_model)
 
-    def test_evon_requires_a_configured_runtime(self):
+    def test_llm_requires_a_configured_endpoint(self):
         with self.assertRaises(RuntimeError):
-            self.client.generate_with_evon("Generate notes.")
+            self.client.generate_with_llm("Generate notes.")
 
 
 if __name__ == "__main__":
