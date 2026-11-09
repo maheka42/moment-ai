@@ -37,6 +37,8 @@ API request formats must follow the current Gnani API documentation. The adapter
 
 - FastAPI backend with CORS configured for the local Vite frontend.
 - PDF and TXT extraction separated into an ingestion service, with PDF page references preserved.
+- Prisma v3.0 STT REST integration for audio clips up to 30 seconds, using `X-API-Key-ID`, `model=prisma-v3.0`, and configurable language/output format.
+- Audio transcription metadata includes request ID, detected language, truncation flag, and provider timings.
 - Upload size and file-extension validation.
 - Corporate and student prompt preparation endpoint (`POST /api/prepare`). This prepares a prompt only; it does not call an LLM.
 - Explicit `503` response from `POST /api/process` until a supported Evon runtime is configured.
@@ -44,12 +46,12 @@ API request formats must follow the current Gnani API documentation. The adapter
 - Unit tests for ingestion and prompt preparation under `backend/tests/`.
 - Gnani API adapter placeholders pending confirmation of exact API contracts.
 
-Audio transcription, AI generation, narration, database persistence, and end-to-end frontend integration are not yet implemented. Do not present this repository as a complete working application until those integrations and end-to-end tests are complete.
+Long-audio Batch STT, AI generation through Evon, narration through Timbre, database persistence, and end-to-end frontend integration are not yet implemented. Prisma REST currently targets clips up to 30 seconds; use the Batch API for longer recordings once its contract is implemented. Do not present this repository as a complete working application until those integrations and end-to-end tests are complete.
 
 ### Backend API routes
 
 - `GET /health` — service health.
-- `POST /api/ingest` — PDF/TXT upload and text extraction. Audio currently returns `501`.
+- `POST /api/ingest` — PDF/TXT extraction and Prisma v3.0 transcription for supported audio clips up to 30 seconds.
 - `POST /api/prepare` — prepare a corporate or student prompt from supplied text.
 - `POST /api/process` — reserved for Evon inference; currently returns `503`.
 - `POST /api/export` — create a PDF or DOCX from supplied title and text.
