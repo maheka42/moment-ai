@@ -80,7 +80,7 @@ def health() -> dict:
             "prisma_rest": bool(gnani.api_key_id and gnani.stt_endpoint),
             "batch_stt": bool(gnani.api_key_id),
             "timbre": bool(gnani.api_key_id and gnani.tts_endpoint),
-            "evon": bool(gnani.llm_endpoint),
+            "llm": bool(gnani.llm_endpoint and gnani.llm_api_key),
         },
     }
 
@@ -215,16 +215,16 @@ def prepare_workflow(request: PrepareRequest) -> dict:
     return {
         "status": "prepared", "mode": request.mode, "prompt": prompt,
         "model_status": "not_connected",
-        "message": "Prompt prepared. Evon inference is not configured yet.",
+        "message": "Prompt prepared. Hosted LLM generation is not configured yet.",
     }
 
 
 @app.post("/api/process")
 def process_workflow(request: PrepareRequest) -> dict:
-    """Generate corporate or student output with the configured Evon runtime."""
+    """Generate corporate or student output with the configured hosted LLM."""
     prompt = build_workflow_prompt(request.mode, request.source_text)
     try:
-        generated = gnani.generate_with_evon(prompt)
+        generated = gnani.generate_with_llm(prompt)
     except (RuntimeError, ValueError, GnaniAPIError) as exc:
         _raise_gnani_http_error(exc)
     return {
