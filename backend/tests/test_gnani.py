@@ -112,6 +112,7 @@ class GnaniAdapterTests(unittest.TestCase):
         kwargs = post.call_args.kwargs
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer runtime-token")
         self.assertEqual(kwargs["json"]["model"], self.client.llm_model)
+        self.assertEqual(kwargs["json"]["max_completion_tokens"], 5000)
 
     def test_llm_requires_a_configured_endpoint(self):
         with self.assertRaises(RuntimeError):
