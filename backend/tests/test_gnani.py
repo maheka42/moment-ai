@@ -102,7 +102,7 @@ class GnaniAdapterTests(unittest.TestCase):
         response.ok = True
         response.status_code = 200
         response.json.return_value = {
-            "choices": [{"message": {"content": "{\\"title\\": \\"Notes\\"}"}}]
+            "choices": [{"message": {"content": '{"title": "Notes"}'}}]
         }
         post.return_value = response
         self.client.llm_endpoint = "http://gpu-host:8000/v1/chat/completions"
