@@ -21,7 +21,7 @@ Generate topic-wise notes, explanations, definitions, formulas, examples, key ta
 - **Prisma v3.0 REST:** short-clip transcription using the project-specific API contract previously supplied (model `prisma-v3.0`, `X-API-Key-ID`).
 - **Batch STT:** asynchronous upload, start, status polling, file results, and transcript download. The currently published Batch API examples specify `gnani-prisma-v2.5`; this is configurable with `GNANI_BATCH_STT_MODEL`. The Batch API has a 10 MB per-file limit, a 100-file job limit, and expiring transcript URLs.
 - **Timbre v2.5 REST:** MP3 narration using binary audio responses, configurable voice, language, and speed.
-- **Evon v3.3:** reasoning and structured generation. It is open-weight, not hosted on the API platform. The published model card lists Transformers 5.3+, vLLM 0.12+, or SGLang, Linux, and NVIDIA H100/H200/A100-class hardware. No unsupported hosted endpoint or local CPU compatibility is assumed.
+- **Evon v3.3:** reasoning and structured generation through a configurable OpenAI-compatible inference endpoint. The adapter is ready for a self-hosted vLLM/SGLang server; it does not pretend that Gnani hosts Evon as an API. The published model card lists Transformers 5.3+, vLLM 0.12+, or SGLang, Linux, and NVIDIA H100/H200/A100-class hardware.
 
 The public Gnani documentation currently labels the generally available Prisma REST/Batch model v2.5, while the project-specific Prisma REST contract supplied for this build identifies v3.0. The code keeps these settings separate rather than silently treating the contracts as interchangeable.
 
@@ -42,21 +42,22 @@ The public Gnani documentation currently labels the generally available Prisma R
 - Batch STT job creation, start, status retrieval, and transcript download.
 - Timbre v2.5 REST adapter returning MP3 bytes.
 - Corporate and student prompt preparation endpoint (`POST /api/prepare`).
-- Explicit `503` from `POST /api/process` until an Evon runtime is configured.
-- PDF and editable DOCX export endpoint (`POST /api/export`).
+- Evon v3.3 generation adapter for an operator-hosted OpenAI-compatible vLLM/SGLang endpoint (`GNANI_LLM_ENDPOINT`); returns `503` until that endpoint is configured.
+- PDF, editable DOCX, and Timbre MP3 export endpoints.
+- React frontend connected to ingestion, Batch STT, Evon generation, PDF/DOCX export, and MP3 narration.
 - Mocked unit tests for the Gnani adapters and ingestion services.
 
-These are code-level integrations and mocked tests. Real provider calls and end-to-end frontend tests still need to be run locally with the participant's API key. The React frontend is still a scaffold and is not yet connected end-to-end.
+These are code-level integrations and mocked tests. Real provider calls, Evon hosting, and end-to-end tests still need to be run locally with the participant's API key and a configured GPU inference server.
 
 ### Backend API routes
 
 - `GET /health` — service health.
 - `POST /api/ingest` — PDF/TXT extraction and short audio transcription.
 - `POST /api/transcribe/batch` — upload a long recording (up to 10 MB) and start an asynchronous Batch STT job.
-- `GET /api/transcribe/batch/{job_id}` — poll job status; includes transcripts when the provider marks the job `COMPLETED`.
+- `GET /api/transcribe/batch/{job_id}` — poll job status; includes completed transcripts and failed-file details for terminal jobs.
 - `POST /api/narrate` — create a narrated MP3 with Timbre v2.5.
 - `POST /api/prepare` — prepare a corporate or student prompt from supplied text.
-- `POST /api/process` — reserved for Evon inference; currently returns `503`.
+- `POST /api/process` — generate the selected corporate/student output with Evon; returns `503` until `GNANI_LLM_ENDPOINT` is configured.
 - `POST /api/export` — create a PDF or DOCX from supplied title and text.
 
 ## Tech stack
@@ -81,6 +82,16 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 uvicorn backend.app.main:app --reload
 ```
+
+In a second PowerShell terminal, start the frontend:
+
+```powershell
+cd D:\Projects\moment-ai\frontend
+npm install --cache D:\Projects\.npm-cache
+npm run dev
+```
+
+Copy `frontend/.env.example` to `frontend/.env` only if you need to change the backend URL.
 
 ### macOS / Linux
 
