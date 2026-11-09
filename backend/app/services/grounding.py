@@ -37,6 +37,14 @@ def _evidence_is_valid(item: dict[str, Any], source: str, fields: tuple[str, ...
 
 def _parse_json(generated: str) -> dict[str, Any]:
     candidate = generated.strip()
+    fence = chr(96) * 3
+    if candidate.startswith(fence):
+        candidate = candidate[len(fence):]
+        if candidate[:4].lower() == "json":
+            candidate = candidate[4:]
+        if candidate.endswith(fence):
+            candidate = candidate[:-len(fence)]
+        candidate = candidate.strip()
     try:
         value = json.loads(candidate)
     except json.JSONDecodeError as exc:
