@@ -23,7 +23,7 @@ Generate topic-wise notes, explanations, definitions, formulas, examples, key ta
 - **Timbre v2.5 REST:** MP3 narration using binary audio responses, configurable voice, language, and speed.
 - **Evon v3.3:** reasoning and structured generation through a configurable OpenAI-compatible inference endpoint. The adapter is ready for a self-hosted vLLM/SGLang server; it does not pretend that Gnani hosts Evon as an API. The published model card lists Transformers 5.3+, vLLM 0.12+, or SGLang, Linux, and NVIDIA H100/H200/A100-class hardware.
 
-The public Gnani documentation currently labels the generally available Prisma REST/Batch model v2.5, while the project-specific Prisma REST contract supplied for this build identifies v3.0. The code keeps these settings separate rather than silently treating the contracts as interchangeable.
+The public Gnani documentation and challenge page currently describe Prisma v2.5, while the project-specific Prisma REST contract supplied for this build identifies v3.0. Short-clip REST model selection is configurable with `GNANI_PRISMA_MODEL`; set it to an empty value to omit the model field and use the account's default. Batch STT remains separately configured because its public contract specifies v2.5.
 
 ## Evidence and quality rules
 
