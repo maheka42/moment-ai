@@ -290,7 +290,7 @@ export default function App() {
               </div>
             </div>
             <button className="button button-primary full-width" onClick={generate} disabled={!!busy}>
-              {busy === "generate" ? "Generating with Evon…" : "Generate output"}
+              {busy === "generate" ? "Generating…" : "Generate output"}
               <span>↗</span>
             </button>
 
