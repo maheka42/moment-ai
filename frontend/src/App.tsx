@@ -87,9 +87,12 @@ async function readError(response: Response): Promise<string> {
   try {
     const body = await response.json();
     const detail = body.detail;
-    if (typeof detail === "string") return detail;
-    if (detail && typeof detail.message === "string") return detail.message;
-    return JSON.stringify(detail || body);
+    if (typeof detail === "string") return `HTTP ${response.status}: ${detail}`;
+    if (detail && typeof detail.message === "string") {
+      const code = typeof detail.error_type === "string" ? ` (${detail.error_type})` : "";
+      return `HTTP ${response.status}: ${detail.message}${code}`;
+    }
+    return `HTTP ${response.status}: ${JSON.stringify(detail || body)}`;
   } catch {
     return `Request failed (${response.status})`;
   }
