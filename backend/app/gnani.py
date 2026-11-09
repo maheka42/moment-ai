@@ -25,6 +25,7 @@ class GnaniClient:
     base_url: str = "https://api.vachana.ai"
     api_key_id: str | None = None
     stt_endpoint: str | None = None
+    prisma_model: str | None = "prisma-v3.0"
     tts_endpoint: str | None = None
     batch_stt_model: str = "gnani-prisma-v2.5"
     llm_endpoint: str | None = None
@@ -38,6 +39,7 @@ class GnaniClient:
             base_url=base_url,
             api_key_id=os.getenv("GNANI_API_KEY_ID"),
             stt_endpoint=os.getenv("GNANI_STT_ENDPOINT", f"{base_url}/stt/v3"),
+            prisma_model=os.getenv("GNANI_PRISMA_MODEL", "prisma-v3.0").strip() or None,
             tts_endpoint=os.getenv("GNANI_TTS_ENDPOINT") or f"{base_url}/api/v1/tts/inference",
             batch_stt_model=os.getenv(
                 "GNANI_BATCH_STT_MODEL", "gnani-prisma-v2.5"
@@ -112,7 +114,9 @@ class GnaniClient:
         if not language_code and output_format != "transliterate":
             raise ValueError("language_code is required unless format is transliterate.")
 
-        fields: dict[str, str] = {"model": "prisma-v3.0", "format": output_format}
+        fields: dict[str, str] = {"format": output_format}
+        if self.prisma_model:
+            fields["model"] = self.prisma_model
         if language_code:
             fields["language_code"] = language_code
         if topic:
