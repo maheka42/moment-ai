@@ -83,7 +83,7 @@ function StructuredOutput({ output }: { output: string }) {
     </div>
   );
 }
-\nasync function readError(response: Response): Promise<string> {
+async function readError(response: Response): Promise<string> {
   try {
     const body = await response.json();
     const detail = body.detail;
