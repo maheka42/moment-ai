@@ -35,9 +35,7 @@ class GnaniClient:
             base_url=base_url,
             api_key_id=os.getenv("GNANI_API_KEY_ID"),
             stt_endpoint=os.getenv("GNANI_STT_ENDPOINT", f"{base_url}/stt/v3"),
-            tts_endpoint=os.getenv(
-                "GNANI_TTS_ENDPOINT", f"{base_url}/api/v1/tts/inference"
-            ),
+            tts_endpoint=os.getenv("GNANI_TTS_ENDPOINT") or f"{base_url}/api/v1/tts/inference",
             batch_stt_model=os.getenv(
                 "GNANI_BATCH_STT_MODEL", "gnani-prisma-v2.5"
             ),
