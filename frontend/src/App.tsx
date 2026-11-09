@@ -67,7 +67,7 @@ function StructuredOutput({ output }: { output: string }) {
   } catch {
     parsed = null;
   }
-  if (!parsed) return <StructuredOutput output={output} />;
+  if (!parsed) return <pre className="result-output">{output}</pre>;
 
   const entries = Object.entries(parsed).filter(([key, value]) =>
     key !== "source_evidence" && key !== "evidence" && value !== undefined && value !== ""
