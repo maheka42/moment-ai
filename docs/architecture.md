@@ -39,7 +39,7 @@ Lecture recording/PDF/text → extraction or Prisma transcription → evidence-g
 - `GET /api/transcribe/batch/{job_id}` — retrieve job state and completed transcripts.
 - `POST /api/narrate` — return an MP3 narration from Timbre v2.5.
 - `POST /api/prepare` — prepare the corporate/student prompt; no model call.
-- `POST /api/process` — reserved for Evon; currently returns 503.
+- `POST /api/process` — generate the corporate/student output with the configured Evon runtime; returns 503 until its endpoint is configured.
 - `POST /api/export` — PDF or DOCX.
 
 ## Proposed repository layout
