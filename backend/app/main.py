@@ -9,11 +9,15 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
 from .exporters import to_docx, to_pdf
 from .gnani import GnaniAPIError, GnaniClient
 from .services.ingestion import extract_pdf, extract_text_file, get_file_extension
 from .services.workflow import build_workflow_prompt
+
+# Load local development secrets before creating provider clients.
+load_dotenv()
 
 app = FastAPI(title="MOMENT AI API", version="0.4.0")
 gnani = GnaniClient.from_env()
