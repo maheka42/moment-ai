@@ -14,15 +14,16 @@ Generate topic-wise notes, explanations, definitions, formulas, examples, key ta
 
 **Inputs:** PDF, audio recordings, and pasted text.
 
-**Outputs:** PDF, editable DOCX, and narrated audio.
+**Outputs:** PDF, editable DOCX, and narrated MP3.
 
 ## Gnani model integration
 
-- **Prisma v3.0:** speech-to-text for audio transcription.
-- **Evon:** reasoning and structured generation. Evon v3.3 is available as an open-weight model; this project does not assume an undocumented hosted endpoint.
-- **Timbre:** text-to-speech for narrated output.
+- **Prisma v3.0 REST:** short-clip transcription using the project-specific API contract previously supplied (model `prisma-v3.0`, `X-API-Key-ID`).
+- **Batch STT:** asynchronous upload, start, status polling, file results, and transcript download. The currently published Batch API examples specify `gnani-prisma-v2.5`; this is configurable with `GNANI_BATCH_STT_MODEL`. The Batch API has a 10 MB per-file limit, a 100-file job limit, and expiring transcript URLs.
+- **Timbre v2.5 REST:** MP3 narration using binary audio responses, configurable voice, language, and speed.
+- **Evon v3.3:** reasoning and structured generation. It is open-weight, not hosted on the API platform. The published model card lists Transformers 5.3+, vLLM 0.12+, or SGLang, Linux, and NVIDIA H100/H200/A100-class hardware. No unsupported hosted endpoint or local CPU compatibility is assumed.
 
-API request formats must follow the current Gnani API documentation. The adapter intentionally avoids guessing endpoint payloads.
+The public Gnani documentation currently labels the generally available Prisma REST/Batch model v2.5, while the project-specific Prisma REST contract supplied for this build identifies v3.0. The code keeps these settings separate rather than silently treating the contracts as interchangeable.
 
 ## Evidence and quality rules
 
@@ -36,22 +37,24 @@ API request formats must follow the current Gnani API documentation. The adapter
 ## Current implementation
 
 - FastAPI backend with CORS configured for the local Vite frontend.
-- PDF and TXT extraction separated into an ingestion service, with PDF page references preserved.
-- Prisma v3.0 STT REST integration for audio clips up to 30 seconds, using `X-API-Key-ID`, `model=prisma-v3.0`, and configurable language/output format.
-- Audio transcription metadata includes request ID, detected language, truncation flag, and provider timings.
-- Upload size and file-extension validation.
-- Corporate and student prompt preparation endpoint (`POST /api/prepare`). This prepares a prompt only; it does not call an LLM.
-- Explicit `503` response from `POST /api/process` until a supported Evon runtime is configured.
+- PDF and TXT extraction with PDF page references preserved.
+- Prisma v3.0 short-clip REST adapter.
+- Batch STT job creation, start, status retrieval, and transcript download.
+- Timbre v2.5 REST adapter returning MP3 bytes.
+- Corporate and student prompt preparation endpoint (`POST /api/prepare`).
+- Explicit `503` from `POST /api/process` until an Evon runtime is configured.
 - PDF and editable DOCX export endpoint (`POST /api/export`).
-- Unit tests for ingestion and prompt preparation under `backend/tests/`.
-- Gnani API adapter placeholders pending confirmation of exact API contracts.
+- Mocked unit tests for the Gnani adapters and ingestion services.
 
-Long-audio Batch STT, AI generation through Evon, narration through Timbre, database persistence, and end-to-end frontend integration are not yet implemented. Prisma REST currently targets clips up to 30 seconds; use the Batch API for longer recordings once its contract is implemented. Do not present this repository as a complete working application until those integrations and end-to-end tests are complete.
+These are code-level integrations and mocked tests. Real provider calls and end-to-end frontend tests still need to be run locally with the participant's API key. The React frontend is still a scaffold and is not yet connected end-to-end.
 
 ### Backend API routes
 
 - `GET /health` — service health.
-- `POST /api/ingest` — PDF/TXT extraction and Prisma v3.0 transcription for supported audio clips up to 30 seconds.
+- `POST /api/ingest` — PDF/TXT extraction and short audio transcription.
+- `POST /api/transcribe/batch` — upload a long recording (up to 10 MB) and start an asynchronous Batch STT job.
+- `GET /api/transcribe/batch/{job_id}` — poll job status; includes transcripts when the provider marks the job `COMPLETED`.
+- `POST /api/narrate` — create a narrated MP3 with Timbre v2.5.
 - `POST /api/prepare` — prepare a corporate or student prompt from supplied text.
 - `POST /api/process` — reserved for Evon inference; currently returns `503`.
 - `POST /api/export` — create a PDF or DOCX from supplied title and text.
@@ -63,20 +66,15 @@ Long-audio Batch STT, AI generation through Evon, narration through Timbre, data
 - PDF extraction: PyMuPDF
 - DOCX: python-docx
 - PDF export: ReportLab
+- Gnani speech API: requests
 - Planned data layer: Firebase / Firestore
-
-## Architecture
-
-See [docs/architecture.md](docs/architecture.md) for the eight logical layers, request flows, repository structure, and design rules.
-
-The React + TypeScript frontend scaffold is in `frontend/`. Firebase/Firestore persistence is planned but not connected yet. See [docs/architecture.md](docs/architecture.md) for the target modular-monolith design.
 
 ## Local setup
 
 ### Windows (PowerShell)
 
 ```powershell
-cd moment-ai
+cd D:\Projects\moment-ai
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -87,7 +85,6 @@ uvicorn backend.app.main:app --reload
 ### macOS / Linux
 
 ```bash
-cd moment-ai
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
