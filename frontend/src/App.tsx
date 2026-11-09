@@ -363,7 +363,7 @@ export default function App() {
             {output ? (
               <>
                 <div className="result-heading"><b>Generated output</b><span>Review before sharing</span></div>
-                <pre className="result-output">{output}</pre>
+                <StructuredOutput output={output} />
                 <div className="export-actions">
                   <button className="button button-secondary" onClick={() => exportFile("pdf")} disabled={!!busy}>{busy === "pdf" ? "Creating…" : "↓ PDF"}</button>
                   <button className="button button-secondary" onClick={() => exportFile("docx")} disabled={!!busy}>{busy === "docx" ? "Creating…" : "↓ DOCX"}</button>
