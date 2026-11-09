@@ -207,11 +207,18 @@ def prepare_workflow(request: PrepareRequest) -> dict:
 
 @app.post("/api/process")
 def process_workflow(request: PrepareRequest) -> dict:
-    """Reserved for model execution once an Evon runtime is configured."""
-    raise HTTPException(
-        status_code=503,
-        detail="AI generation is not available yet. Configure a supported Evon inference runtime first.",
-    )
+    """Generate corporate or student output with the configured Evon runtime."""
+    prompt = build_workflow_prompt(request.mode, request.source_text)
+    try:
+        generated = gnani.generate_with_evon(prompt)
+    except (RuntimeError, ValueError, GnaniAPIError) as exc:
+        _raise_gnani_http_error(exc)
+    return {
+        "status": "completed",
+        "mode": request.mode,
+        "model": gnani.llm_model,
+        "output": generated,
+    }
 
 
 @app.post("/api/export")
