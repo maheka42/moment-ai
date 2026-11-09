@@ -21,7 +21,10 @@ GROUNDING RULES (mandatory):
   explicitly assigned. Use null for an owner or deadline that is not stated.
 - Preserve names, dates, and meaning. Do not upgrade tentative language into certainty.
 - Every agenda item and discussion point must include an evidence field containing an
-  exact, contiguous excerpt copied from the source. If no excerpt supports it, omit it.
+  exact, contiguous excerpt copied from the source. The agenda item or discussion
+  summary itself must be that exact excerpt, not a paraphrase. If no excerpt supports
+  it, omit the item.
+- Meeting title and date must be copied from the source. If either is absent, use null.
 - Every decision, action item, open question, and risk must include an evidence field
   containing an exact, contiguous excerpt copied from the source. Do not paraphrase
   inside the evidence field. If no exact excerpt supports the claim, omit the item.
