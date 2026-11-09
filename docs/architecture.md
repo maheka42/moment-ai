@@ -29,7 +29,7 @@ Start with a **modular monolith**: one React web client and one FastAPI backend,
 Meeting recording → Prisma short-clip REST or Batch STT → evidence-grounded meeting workflow using the configured hosted LLM → reviewable MoM → PDF/DOCX export and optional Timbre narration.
 
 ### Student
-Lecture recording/PDF/text → extraction or Prisma transcription → evidence-grounded study workflow using Evon → reviewable notes → PDF/DOCX export and optional Timbre narration.
+Lecture recording/PDF/text → extraction or Prisma transcription → evidence-grounded study workflow using the configured hosted LLM → reviewable notes → PDF/DOCX export and optional Timbre narration.
 
 ## Current backend routes
 
