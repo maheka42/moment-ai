@@ -23,7 +23,7 @@ class GnaniClient:
         return cls(
             base_url=os.getenv("GNANI_BASE_URL", "https://api.vachana.ai").rstrip("/"),
             api_key_id=os.getenv("GNANI_API_KEY_ID"),
-            stt_endpoint=os.getenv("GNANI_STT_ENDPOINT"),
+            stt_endpoint=os.getenv("GNANI_STT_ENDPOINT", "https://api.vachana.ai/stt/v3"),
             tts_endpoint=os.getenv("GNANI_TTS_ENDPOINT"),
             llm_endpoint=os.getenv("GNANI_LLM_ENDPOINT"),
         )
