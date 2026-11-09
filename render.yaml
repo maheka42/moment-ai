@@ -26,5 +26,7 @@ services:
     buildCommand: npm install --no-package-lock && npm run build
     staticPublishPath: ./dist
     envVars:
+      - key: NODE_VERSION
+        value: 20.19.0
       - key: VITE_API_BASE_URL
         value: https://moment-ai-api.onrender.com
