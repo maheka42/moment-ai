@@ -1,6 +1,7 @@
 """Gnani API adapters based on the published API contracts."""
 from __future__ import annotations
 
+import base64
 import json
 import os
 from dataclasses import dataclass
@@ -279,9 +280,62 @@ class GnaniClient:
         except requests.RequestException as exc:
             raise GnaniAPIError(502, "Could not reach Gnani Timbre. Check your connection and retry.") from exc
         if not response.ok:
-            self._raise_provider_error(response, "Gnani Timbre request failed.")
+            try:
+                error_payload = response.json()
+            except ValueError:
+                error_payload = {}
+            message = None
+            if isinstance(error_payload, dict):
+                detail = error_payload.get("detail")
+                error = error_payload.get("error")
+                message = (
+                    detail if isinstance(detail, str)
+                    else detail.get("message") if isinstance(detail, dict)
+                    else error.get("message") if isinstance(error, dict)
+                    else error_payload.get("message")
+                )
+            if not message:
+                message = response.text[:500] or "Gnani Timbre request failed."
+            raise GnaniAPIError(response.status_code, str(message))
+
         if not response.content:
             raise GnaniAPIError(502, "Gnani Timbre returned an empty audio file.")
+
+        # Some deployments return raw audio; others wrap base64 audio in JSON.
+        content_type = response.headers.get("Content-Type", "").lower()
+        if "json" in content_type or response.content.lstrip().startswith(b"{"):
+            try:
+                result = response.json()
+            except ValueError as exc:
+                raise GnaniAPIError(502, "Gnani Timbre returned malformed JSON instead of audio.") from exc
+            candidates = [result]
+            if isinstance(result, dict):
+                for key in ("data", "result", "output"):
+                    if isinstance(result.get(key), dict):
+                        candidates.append(result[key])
+            encoded = None
+            for item in candidates:
+                if isinstance(item, dict):
+                    for key in ("audio", "audio_base64", "audioContent", "audio_content", "audio_data"):
+                        value = item.get(key)
+                        if isinstance(value, str) and value.strip():
+                            encoded = value.strip()
+                            break
+                if encoded:
+                    break
+            if not encoded:
+                message = result.get("message") if isinstance(result, dict) else None
+                raise GnaniAPIError(502, str(message or "Gnani Timbre response did not contain audio data."))
+            if encoded.startswith("data:") and "," in encoded:
+                encoded = encoded.split(",", 1)[1]
+            try:
+                audio_bytes = base64.b64decode(encoded)
+            except (ValueError, TypeError) as exc:
+                raise GnaniAPIError(502, "Gnani Timbre returned invalid base64 audio.") from exc
+            if not audio_bytes:
+                raise GnaniAPIError(502, "Gnani Timbre returned empty decoded audio.")
+            return audio_bytes
+
         return response.content
 
     def generate_with_llm(self, prompt: str) -> str:
