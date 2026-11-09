@@ -85,9 +85,9 @@ class GnaniClient:
         try:
             payload = response.json()
         except ValueError as exc:
-            raise GnaniAPIError(response.status_code, "Gnani returned invalid JSON.") from exc
+            raise GnaniAPIError(response.status_code, "Provider returned invalid JSON.") from exc
         if not isinstance(payload, dict):
-            raise GnaniAPIError(502, "Gnani returned an unexpected response format.")
+            raise GnaniAPIError(502, "Provider returned an unexpected response format.")
         return payload
 
     def transcribe_with_prisma(
@@ -286,9 +286,9 @@ class GnaniClient:
 
     def generate_with_llm(self, prompt: str) -> str:
         """Call a hosted OpenAI-compatible chat-completions API."""
-        if not self.llm_endpoint:
+        if not self.llm_endpoint or not self.llm_api_key:
             raise RuntimeError(
-                "Configure LLM_API_URL with your hosted OpenAI-compatible chat-completions URL."
+                "Configure both LLM_API_URL and LLM_API_KEY in your local .env file."
             )
         headers = {"Content-Type": "application/json"}
         if self.llm_api_key:
@@ -309,7 +309,7 @@ class GnaniClient:
             ],
             "temperature": 0.2,
             "top_p": 0.9,
-            "max_tokens": 5000,
+            "max_completion_tokens": 5000,
         }
         try:
             response = requests.post(
