@@ -18,7 +18,7 @@ Start with a **modular monolith**: one React web client and one FastAPI backend,
 ## Gnani API contracts in use
 
 - **Authentication:** `X-API-Key-ID` header; the key stays in the backend environment.
-- **Prisma short-clip REST:** `POST /stt/v3`. The project-specific contract supplied for this build uses `model=prisma-v3.0`. The current public Gnani docs describe v2.5 and short clips up to 60 seconds (30 seconds ideal); keep the model/version contract explicit and verify the actual account entitlement during real API testing.
+- **Prisma short-clip REST:** `POST /stt/v3`. The project-specific contract supplied for this build uses `model=prisma-v3.0`, configurable through `GNANI_PRISMA_MODEL`. The current public Gnani docs describe v2.5 and short clips up to 60 seconds (30 seconds ideal); setting `GNANI_PRISMA_MODEL` empty omits the model field and uses the account default. Verify the actual account entitlement during real API testing.
 - **Batch STT:** `POST /stt/v3/batch/jobs`, then `POST /{job_id}/start`, poll `GET /{job_id}`, fetch `GET /{job_id}/files`, and download each short-lived `transcript_url`. Public Batch docs currently specify `gnani-prisma-v2.5`, 10 MB per file, and up to 100 files per job. This is separately configurable.
 - **Timbre:** `POST /api/v1/tts/inference`, model `timbre-v2.5`; the endpoint returns binary audio. MOMENT AI requests MP3 for narration.
 - **Evon v3.3:** open weights, not a hosted API. MOMENT AI calls a configured OpenAI-compatible vLLM/SGLang chat-completions endpoint. The runtime must be deployed separately; the public model card lists Linux and supported GPU-class hardware. Do not silently fall back to a different model.
