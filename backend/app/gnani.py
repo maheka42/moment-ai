@@ -30,7 +30,7 @@ class GnaniClient:
     batch_stt_model: str = "gnani-prisma-v2.5"
     llm_endpoint: str | None = None
     llm_api_key: str | None = None
-    llm_model: str = "gnani/gnani-evon-v3.3-30B-A3B"
+    llm_model: str = "openai/gpt-oss-120b"
 
     @classmethod
     def from_env(cls) -> "GnaniClient":
@@ -44,11 +44,9 @@ class GnaniClient:
             batch_stt_model=os.getenv(
                 "GNANI_BATCH_STT_MODEL", "gnani-prisma-v2.5"
             ),
-            llm_endpoint=os.getenv("GNANI_LLM_ENDPOINT") or None,
-            llm_api_key=os.getenv("GNANI_LLM_API_KEY") or None,
-            llm_model=os.getenv(
-                "GNANI_LLM_MODEL", "gnani/gnani-evon-v3.3-30B-A3B"
-            ),
+            llm_endpoint=os.getenv("LLM_API_URL") or None,
+            llm_api_key=os.getenv("LLM_API_KEY") or None,
+            llm_model=os.getenv("LLM_MODEL", "openai/gpt-oss-120b"),
         )
 
     def auth_headers(self) -> dict[str, str]:
@@ -286,12 +284,11 @@ class GnaniClient:
             raise GnaniAPIError(502, "Gnani Timbre returned an empty audio file.")
         return response.content
 
-    def generate_with_evon(self, prompt: str) -> str:
-        """Call an operator-hosted OpenAI-compatible Evon v3.3 inference server."""
+    def generate_with_llm(self, prompt: str) -> str:
+        """Call a hosted OpenAI-compatible chat-completions API."""
         if not self.llm_endpoint:
             raise RuntimeError(
-                "Evon is open-weight, not a hosted Gnani API. Configure "
-                "GNANI_LLM_ENDPOINT to your own vLLM/SGLang-compatible endpoint."
+                "Configure LLM_API_URL with your hosted OpenAI-compatible chat-completions URL."
             )
         headers = {"Content-Type": "application/json"}
         if self.llm_api_key:
@@ -320,12 +317,12 @@ class GnaniClient:
             )
         except requests.RequestException as exc:
             raise GnaniAPIError(
-                502, "Could not reach the configured Evon inference server."
+                502, "Could not reach the configured LLM provider."
             ) from exc
-        result = self._json_response(response, "Evon inference request failed.")
+        result = self._json_response(response, "LLM provider request failed.")
         choices = result.get("choices")
         if not isinstance(choices, list) or not choices:
-            raise GnaniAPIError(502, "Evon returned no completion choices.")
+            raise GnaniAPIError(502, "LLM provider returned no completion choices.")
         message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
         generated = message.get("content") if isinstance(message, dict) else None
         if isinstance(generated, list):
@@ -333,5 +330,5 @@ class GnaniClient:
                 part.get("text", "") for part in generated if isinstance(part, dict)
             )
         if not isinstance(generated, str) or not generated.strip():
-            raise GnaniAPIError(502, "Evon returned an empty response.")
+            raise GnaniAPIError(502, "LLM provider returned an empty response.")
         return generated.strip()
