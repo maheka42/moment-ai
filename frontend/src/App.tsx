@@ -234,8 +234,8 @@ export default function App() {
                 <option value="ml-IN">Malayalam</option>
                 <option value="mr-IN">Marathi</option>
                 <option value="bn-IN">Bengali</option>
-                <option value="gu-IN">Gujarati</option>
-                <option value="pa-IN">Punjabi</option>
+                <option value="gu-IN" disabled={useBatch}>Gujarati (REST only)</option>
+                <option value="pa-IN" disabled={useBatch}>Punjabi (REST only)</option>
               </select>
               <label className="batch-toggle">
                 <input type="checkbox" checked={useBatch} onChange={(event) => setUseBatch(event.target.checked)} />
