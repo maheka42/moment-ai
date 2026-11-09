@@ -27,6 +27,9 @@ class GnaniClient:
     stt_endpoint: str | None = None
     tts_endpoint: str | None = None
     batch_stt_model: str = "gnani-prisma-v2.5"
+    llm_endpoint: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str = "gnani/gnani-evon-v3.3-30B-A3B"
 
     @classmethod
     def from_env(cls) -> "GnaniClient":
@@ -38,6 +41,11 @@ class GnaniClient:
             tts_endpoint=os.getenv("GNANI_TTS_ENDPOINT") or f"{base_url}/api/v1/tts/inference",
             batch_stt_model=os.getenv(
                 "GNANI_BATCH_STT_MODEL", "gnani-prisma-v2.5"
+            ),
+            llm_endpoint=os.getenv("GNANI_LLM_ENDPOINT") or None,
+            llm_api_key=os.getenv("GNANI_LLM_API_KEY") or None,
+            llm_model=os.getenv(
+                "GNANI_LLM_MODEL", "gnani/gnani-evon-v3.3-30B-A3B"
             ),
         )
 
@@ -275,8 +283,51 @@ class GnaniClient:
         return response.content
 
     def generate_with_evon(self, prompt: str) -> str:
-        """Evon is open-weight; this adapter does not assume a hosted endpoint."""
-        raise NotImplementedError(
-            "Configure a supported Evon v3.3 runtime before enabling generation. "
-            "The official model card lists Linux and H100/H200/A100-class hardware."
-        )
+        """Call an operator-hosted OpenAI-compatible Evon v3.3 inference server."""
+        if not self.llm_endpoint:
+            raise RuntimeError(
+                "Evon is open-weight, not a hosted Gnani API. Configure "
+                "GNANI_LLM_ENDPOINT to your own vLLM/SGLang-compatible endpoint."
+            )
+        headers = {"Content-Type": "application/json"}
+        if self.llm_api_key:
+            headers["Authorization"] = f"Bearer {self.llm_api_key}"
+        payload = {
+            "model": self.llm_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are MOMENT AI. Follow the user's output schema exactly. "
+                        "Use only source evidence. Never invent facts, attendees, "
+                        "decisions, owners, deadlines, formulas, or citations. "
+                        "Mark missing information as unknown."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 5000,
+        }
+        try:
+            response = requests.post(
+                self.llm_endpoint, headers=headers, json=payload, timeout=600
+            )
+        except requests.RequestException as exc:
+            raise GnaniAPIError(
+                502, "Could not reach the configured Evon inference server."
+            ) from exc
+        result = self._json_response(response, "Evon inference request failed.")
+        choices = result.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise GnaniAPIError(502, "Evon returned no completion choices.")
+        message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
+        generated = message.get("content") if isinstance(message, dict) else None
+        if isinstance(generated, list):
+            generated = "".join(
+                part.get("text", "") for part in generated if isinstance(part, dict)
+            )
+        if not isinstance(generated, str) or not generated.strip():
+            raise GnaniAPIError(502, "Evon returned an empty response.")
+        return generated.strip()
