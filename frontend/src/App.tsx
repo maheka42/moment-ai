@@ -225,7 +225,7 @@ export default function App() {
                 onChange={(event) => setFile(event.target.files?.[0] || null)}
               />
               <span className="upload-icon">↑</span>
-              <b>{file ? file.name : "Drop a file here or browse"}</b>
+              <b>{file ? file.name : "Choose a file or browse"}</b>
               <small>PDF, TXT, MP3, WAV, M4A, OGG, FLAC · Up to 50 MB (Batch audio: 10 MB)</small>
             </label>
 
