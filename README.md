@@ -80,6 +80,9 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+# Copy the example only when .env does not already exist.
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+python -m unittest discover -s backend/tests -v
 uvicorn backend.app.main:app --reload
 ```
 
@@ -88,10 +91,11 @@ In a second PowerShell terminal, start the frontend:
 ```powershell
 cd D:\Projects\moment-ai\frontend
 npm install --cache D:\Projects\.npm-cache
+npm run build
 npm run dev
 ```
 
-Copy `frontend/.env.example` to `frontend/.env` only if you need to change the backend URL.
+Copy `frontend/.env.example` to `frontend/.env` only if you need to change the backend URL. If `.env` already exists, edit it rather than replacing it. Set `GNANI_API_KEY_ID` to your private API key. Keep `GNANI_LLM_ENDPOINT` blank until you have a separately hosted Evon inference server.
 
 ### macOS / Linux
 
