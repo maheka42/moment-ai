@@ -1,4 +1,4 @@
-"""Gnani API adapters based on the official REST documentation."""
+"""Gnani API adapters based on the published API contracts."""
 from __future__ import annotations
 
 import json
@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -25,7 +26,7 @@ class GnaniClient:
     api_key_id: str | None = None
     stt_endpoint: str | None = None
     tts_endpoint: str | None = None
-    llm_endpoint: str | None = None
+    batch_stt_model: str = "gnani-prisma-v2.5"
 
     @classmethod
     def from_env(cls) -> "GnaniClient":
@@ -34,14 +35,54 @@ class GnaniClient:
             base_url=base_url,
             api_key_id=os.getenv("GNANI_API_KEY_ID"),
             stt_endpoint=os.getenv("GNANI_STT_ENDPOINT", f"{base_url}/stt/v3"),
-            tts_endpoint=os.getenv("GNANI_TTS_ENDPOINT"),
-            llm_endpoint=os.getenv("GNANI_LLM_ENDPOINT"),
+            tts_endpoint=os.getenv(
+                "GNANI_TTS_ENDPOINT", f"{base_url}/api/v1/tts/inference"
+            ),
+            batch_stt_model=os.getenv(
+                "GNANI_BATCH_STT_MODEL", "gnani-prisma-v2.5"
+            ),
         )
 
     def auth_headers(self) -> dict[str, str]:
         if not self.api_key_id:
             raise RuntimeError("Configure GNANI_API_KEY_ID in your local .env file.")
         return {"X-API-Key-ID": self.api_key_id}
+
+    @staticmethod
+    def _raise_provider_error(response: requests.Response, fallback: str) -> None:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        error = payload.get("error", {}) if isinstance(payload, dict) else {}
+        detail = payload.get("detail", {}) if isinstance(payload, dict) else {}
+        message = (
+            error.get("message") if isinstance(error, dict) else None
+        ) or (
+            detail.get("message") if isinstance(detail, dict) else None
+        ) or (
+            payload.get("message") if isinstance(payload, dict) else None
+        ) or fallback
+        error_type = (
+            error.get("type") if isinstance(error, dict) else None
+        ) or (
+            detail.get("error_code") if isinstance(detail, dict) else None
+        ) or (
+            payload.get("error") if isinstance(payload, dict) and isinstance(payload.get("error"), str) else None
+        )
+        raise GnaniAPIError(response.status_code, message, error_type)
+
+    @staticmethod
+    def _json_response(response: requests.Response, fallback: str) -> dict[str, Any]:
+        if not response.ok:
+            GnaniClient._raise_provider_error(response, fallback)
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise GnaniAPIError(response.status_code, "Gnani returned invalid JSON.") from exc
+        if not isinstance(payload, dict):
+            raise GnaniAPIError(502, "Gnani returned an unexpected response format.")
+        return payload
 
     def transcribe_with_prisma(
         self,
@@ -55,11 +96,9 @@ class GnaniClient:
         speaker_names: list[str] | None = None,
         request_id: str | None = None,
     ) -> dict[str, Any]:
-        """Call Prisma v3.0 REST. The endpoint accepts audio up to 30 seconds."""
+        """Call the Prisma v3.0 short-clip REST endpoint."""
         if not audio_bytes:
             raise ValueError("Audio file is empty.")
-        if not self.api_key_id:
-            raise RuntimeError("Configure GNANI_API_KEY_ID in your local .env file.")
         if not self.stt_endpoint:
             raise RuntimeError("Configure GNANI_STT_ENDPOINT in your local .env file.")
         if output_format not in {"verbatim", "transcribe", "codemix", "transliterate"}:
@@ -67,84 +106,179 @@ class GnaniClient:
         if not language_code and output_format != "transliterate":
             raise ValueError("language_code is required unless format is transliterate.")
 
-        fields: dict[str, str] = {
-            "model": "prisma-v3.0",
-            "format": output_format,
-        }
+        fields: dict[str, str] = {"model": "prisma-v3.0", "format": output_format}
         if language_code:
             fields["language_code"] = language_code
         if topic:
-            fields["topic"] = topic
+            fields["topic"] = topic[:1600]
         if keyterms:
-            fields["keyterms"] = json.dumps(keyterms, ensure_ascii=False)
+            fields["keyterms"] = json.dumps(keyterms[:200], ensure_ascii=False)
         if previous_text:
-            fields["previous_text"] = previous_text
+            fields["previous_text"] = previous_text[-600:]
         if speaker_names:
-            fields["speaker_names"] = json.dumps(speaker_names, ensure_ascii=False)
+            fields["speaker_names"] = json.dumps(speaker_names[:4], ensure_ascii=False)
 
         headers = self.auth_headers()
         if request_id:
             headers["X-API-Request-ID"] = request_id
-
-        suffix = Path(filename).suffix.lower()
         mime_types = {
-            ".wav": "audio/wav",
-            ".mp3": "audio/mpeg",
-            ".ogg": "audio/ogg",
-            ".flac": "audio/flac",
-            ".aac": "audio/aac",
-            ".m4a": "audio/mp4",
+            ".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg",
+            ".flac": "audio/flac", ".aac": "audio/aac", ".m4a": "audio/mp4",
         }
-        mime_type = mime_types.get(suffix, "application/octet-stream")
-
+        suffix = Path(filename).suffix.lower()
         try:
             response = requests.post(
                 self.stt_endpoint,
                 headers=headers,
-                files={"audio_file": (Path(filename).name, audio_bytes, mime_type)},
+                files={"audio_file": (Path(filename).name, audio_bytes, mime_types.get(suffix, "application/octet-stream"))},
                 data=fields,
-                timeout=60,
+                timeout=90,
             )
         except requests.RequestException as exc:
             raise GnaniAPIError(502, "Could not reach Gnani Prisma. Check your connection and retry.") from exc
 
+        payload = self._json_response(response, "Gnani Prisma request failed.")
+        transcript = payload.get("transcript")
+        if payload.get("success") is not True or not isinstance(transcript, str):
+            raise GnaniAPIError(502, "Gnani did not return a successful transcript.")
+        return payload
+
+    def create_batch_job(
+        self,
+        audio_bytes: bytes,
+        filename: str,
+        language_code: str = "en-IN",
+    ) -> dict[str, Any]:
+        """Upload one audio file to the asynchronous Batch STT API."""
+        if not audio_bytes:
+            raise ValueError("Audio file is empty.")
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            raise ValueError("Batch STT accepts files up to 10 MB each.")
+        endpoint = f"{self.base_url}/stt/v3/batch/jobs"
+        config = {
+            "model": self.batch_stt_model,
+            "language_code": language_code,
+            "mode": "transcribe",
+            "with_diarization": False,
+            "is_multi_channel": False,
+        }
+        files = {
+            "config": (None, json.dumps(config), "application/json"),
+            "files": (Path(filename).name, audio_bytes, self._audio_mime(filename)),
+        }
+        try:
+            response = requests.post(endpoint, headers=self.auth_headers(), files=files, timeout=120)
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not create a Gnani Batch STT job.") from exc
+        payload = self._json_response(response, "Gnani Batch STT job creation failed.")
+        if not payload.get("job_id"):
+            raise GnaniAPIError(502, "Gnani did not return a Batch STT job ID.")
+        return payload
+
+    @staticmethod
+    def _audio_mime(filename: str) -> str:
+        return {
+            ".wav": "audio/wav", ".mp3": "audio/mpeg", ".ogg": "audio/ogg",
+            ".flac": "audio/flac", ".aac": "audio/aac", ".m4a": "audio/mp4",
+        }.get(Path(filename).suffix.lower(), "application/octet-stream")
+
+    def start_batch_job(self, job_id: str) -> dict[str, Any]:
+        endpoint = f"{self.base_url}/stt/v3/batch/jobs/{job_id}/start"
+        try:
+            response = requests.post(endpoint, headers=self.auth_headers(), timeout=30)
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not start the Gnani Batch STT job.") from exc
+        return self._json_response(response, "Gnani Batch STT start failed.")
+
+    def get_batch_job(self, job_id: str) -> dict[str, Any]:
+        endpoint = f"{self.base_url}/stt/v3/batch/jobs/{job_id}"
+        try:
+            response = requests.get(endpoint, headers=self.auth_headers(), timeout=30)
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not retrieve the Gnani Batch STT job.") from exc
+        return self._json_response(response, "Gnani Batch STT status request failed.")
+
+    def get_batch_files(self, job_id: str) -> dict[str, Any]:
+        endpoint = f"{self.base_url}/stt/v3/batch/jobs/{job_id}/files"
+        try:
+            response = requests.get(
+                endpoint, headers=self.auth_headers(),
+                params={"status": "COMPLETED", "limit": 100}, timeout=30,
+            )
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not retrieve Gnani Batch STT files.") from exc
+        return self._json_response(response, "Gnani Batch STT files request failed.")
+
+    def download_batch_transcript(self, transcript_url: str) -> dict[str, Any]:
+        """Download the short-lived pre-signed transcript URL without API credentials."""
+        parsed = urlparse(transcript_url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("Gnani returned an invalid transcript download URL.")
+        try:
+            response = requests.get(transcript_url, timeout=60)
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not download the Gnani transcript.") from exc
+        if not response.ok:
+            raise GnaniAPIError(response.status_code, "Could not download the Gnani transcript.")
         try:
             payload = response.json()
         except ValueError as exc:
-            raise GnaniAPIError(response.status_code, "Gnani returned an unreadable response.") from exc
-
-        if not response.ok:
-            error = payload.get("error", {}) if isinstance(payload, dict) else {}
-            detail = payload.get("detail", {}) if isinstance(payload, dict) else {}
-            message = (
-                error.get("message")
-                if isinstance(error, dict)
-                else None
-            ) or (
-                detail.get("message")
-                if isinstance(detail, dict)
-                else None
-            ) or "Gnani Prisma request failed."
-            error_type = error.get("type") if isinstance(error, dict) else None
-            error_code = detail.get("error_code") if isinstance(detail, dict) else None
-            raise GnaniAPIError(response.status_code, message, error_type or error_code)
-
-        transcript = payload.get("transcript") if isinstance(payload, dict) else None
-        if not isinstance(transcript, str):
-            raise GnaniAPIError(502, "Gnani response did not contain a valid transcript.")
-        if payload.get("success") is not True:
-            raise GnaniAPIError(502, "Gnani did not confirm transcription success.")
-
+            raise GnaniAPIError(502, "Gnani transcript file was not valid JSON.") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("full_transcript"), str):
+            raise GnaniAPIError(502, "Gnani transcript file did not contain full_transcript.")
         return payload
 
-    def synthesize_with_timbre(self, text: str, output_path: str) -> str:
-        """Timbre v2.5 adapter; implement after reviewing its REST contract."""
-        if not self.api_key_id:
-            raise RuntimeError("Configure GNANI_API_KEY_ID in your local .env file.")
-        raise NotImplementedError("Timbre v2.5 REST request and response contract is not implemented yet.")
+    def synthesize_with_timbre(
+        self,
+        text: str,
+        voice: str = "Nalini",
+        language: str = "auto",
+        speed: float = 1.0,
+        container: str = "mp3",
+    ) -> bytes:
+        """Generate narration with Timbre v2.5 and return audio bytes."""
+        if not text.strip():
+            raise ValueError("Narration text cannot be empty.")
+        if not self.tts_endpoint:
+            raise RuntimeError("Configure GNANI_TTS_ENDPOINT in your local .env file.")
+        if not 0.85 <= speed <= 1.15:
+            raise ValueError("Timbre speed must be between 0.85 and 1.15.")
+        if container not in {"mp3", "wav", "ogg"}:
+            raise ValueError("Narration output must be mp3, wav, or ogg.")
+
+        payload: dict[str, Any] = {
+            "text": text,
+            "model": "timbre-v2.5",
+            "voice": voice,
+            "language": language,
+            "speed": speed,
+            "audio_config": {
+                "container": container,
+                "num_channels": 1,
+                "sample_rate": 24000 if container == "mp3" else 48000,
+            },
+        }
+        if container != "mp3":
+            payload["audio_config"]["encoding"] = "linear_pcm"
+            payload["audio_config"]["sample_width"] = 2
+        if container == "mp3":
+            payload["audio_config"]["bitrate"] = "128k"
+
+        try:
+            response = requests.post(
+                self.tts_endpoint, headers=self.auth_headers(), json=payload, timeout=180
+            )
+        except requests.RequestException as exc:
+            raise GnaniAPIError(502, "Could not reach Gnani Timbre. Check your connection and retry.") from exc
+        if not response.ok:
+            self._raise_provider_error(response, "Gnani Timbre request failed.")
+        if not response.content:
+            raise GnaniAPIError(502, "Gnani Timbre returned an empty audio file.")
+        return response.content
 
     def generate_with_evon(self, prompt: str) -> str:
-        """Evon open-weight inference adapter; no hosted endpoint is assumed."""
+        """Evon is open-weight; this adapter does not assume a hosted endpoint."""
         raise NotImplementedError(
-            "Select and configure a supported Evon inference runtime before enabling generation."
+            "Configure a supported Evon v3.3 runtime before enabling generation. "
+            "The official model card lists Linux and H100/H200/A100-class hardware."
         )
