@@ -156,7 +156,7 @@ def get_batch_transcription(job_id: str) -> dict:
         status = gnani.get_batch_job(job_id)
         job_status = str(status.get("status", "UNKNOWN")).upper()
         result = {"job_id": job_id, "status": job_status, "provider": status}
-        if job_status == "COMPLETED":
+        if job_status in {"COMPLETED", "PARTIAL_FAILURE", "FAILED"}:
             files_payload = gnani.get_batch_files(job_id)
             transcripts = []
             for item in files_payload.get("data", []):
