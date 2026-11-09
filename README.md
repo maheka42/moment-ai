@@ -31,7 +31,7 @@ The public Gnani documentation and challenge page currently describe Prisma v2.5
 - Distinguish confirmed decisions from suggestions and discussion.
 - Preserve source page references for PDF text.
 - Preserve timestamps or speaker labels only when returned by the transcription service.
-- Mark missing information as unknown.
+- Keep unsupported fields empty or null rather than guessing.
 - Where possible, include page or timestamp evidence alongside generated statements.
 
 ## Current implementation
@@ -45,7 +45,9 @@ The public Gnani documentation and challenge page currently describe Prisma v2.5
 - Hosted LLM generation adapter for an OpenAI-compatible chat-completions endpoint (default: Groq GPT OSS 120B); returns `503` until the endpoint and API key are configured.
 - PDF, editable DOCX, and Timbre MP3 export endpoints.
 - React frontend connected to ingestion, Batch STT, hosted LLM generation, PDF/DOCX export, and MP3 narration.
-- Mocked unit tests for the Gnani adapters and ingestion services.
+- Conservative corporate-output validation that removes decisions, questions, risks, and action items without exact source evidence; the follow-up email is rebuilt from validated items.
+- Automated GitHub Actions checks for backend unit tests and the frontend production build.
+- Render Blueprint for deploying the FastAPI backend and React frontend.
 
 These are code-level integrations and mocked tests. Real Gnani and Groq provider calls and end-to-end tests still need to be run locally with the participant's API keys.
 
@@ -59,6 +61,10 @@ These are code-level integrations and mocked tests. Real Gnani and Groq provider
 - `POST /api/prepare` — prepare a corporate or student prompt from supplied text.
 - `POST /api/process` — generate the selected corporate/student output with the configured hosted LLM; returns `503` until `LLM_API_URL` and `LLM_API_KEY` are configured.
 - `POST /api/export` — create a PDF or DOCX from supplied title and text.
+
+## Deployment
+
+See [docs/deployment.md](docs/deployment.md) for the Render Blueprint setup, required secrets, and post-deployment smoke tests.
 
 ## Tech stack
 
