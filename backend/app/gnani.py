@@ -201,7 +201,7 @@ class GnaniClient:
         try:
             response = requests.get(
                 endpoint, headers=self.auth_headers(),
-                params={"status": "COMPLETED", "limit": 100}, timeout=30,
+                params={"limit": 100}, timeout=30,
             )
         except requests.RequestException as exc:
             raise GnaniAPIError(502, "Could not retrieve Gnani Batch STT files.") from exc
