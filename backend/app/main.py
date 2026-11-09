@@ -15,6 +15,7 @@ from .exporters import to_docx, to_pdf
 from .gnani import GnaniAPIError, GnaniClient
 from .services.ingestion import extract_pdf, extract_text_file, get_file_extension
 from .services.workflow import build_workflow_prompt
+from .services.grounding import validate_corporate_output
 
 # Load local development secrets before creating provider clients.
 load_dotenv()
@@ -227,6 +228,14 @@ def process_workflow(request: PrepareRequest) -> dict:
         generated = gnani.generate_with_llm(prompt)
     except (RuntimeError, ValueError, GnaniAPIError) as exc:
         _raise_gnani_http_error(exc)
+    if request.mode == "corporate":
+        try:
+            generated = validate_corporate_output(generated, request.source_text)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Could not validate the AI response: {exc}",
+            ) from exc
     return {
         "status": "completed",
         "mode": request.mode,
