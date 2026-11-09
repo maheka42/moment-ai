@@ -163,5 +163,41 @@ def validate_corporate_output(generated: str, source_text: str) -> str:
         for item in data[key]:
             item.pop("evidence", None)
 
+    data["attendees"] = [
+        {"name": item["name"], "role": item.get("role")}
+        for item in data["attendees"]
+    ]
+    data["agenda"] = [{"item": item["item"]} for item in data["agenda"]]
+    data["discussion_points"] = [
+        {"summary": item["summary"]} for item in data["discussion_points"]
+    ]
+    data["decisions"] = [
+        {"description": item["description"]} for item in data["decisions"]
+    ]
+    data["action_items"] = [
+        {
+            "task": item["task"],
+            "owner": item.get("owner"),
+            "deadline": item.get("deadline"),
+        }
+        for item in data["action_items"]
+    ]
+    data["open_questions"] = [
+        {"question": item["question"]} for item in data["open_questions"]
+    ]
+    data["risks_and_dependencies"] = [
+        {"description": item["description"]}
+        for item in data["risks_and_dependencies"]
+    ]
     data["follow_up_email"] = _email_from_validated_minutes(data)
-    return json.dumps(data, ensure_ascii=False, indent=2)
+
+    ordered_keys = (
+        "meeting_title", "date", "attendees", "executive_summary", "agenda",
+        "discussion_points", "decisions", "action_items", "open_questions",
+        "risks_and_dependencies", "follow_up_email",
+    )
+    return json.dumps(
+        {key: data.get(key) for key in ordered_keys},
+        ensure_ascii=False,
+        indent=2,
+    )
