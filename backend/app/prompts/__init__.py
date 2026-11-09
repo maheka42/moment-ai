@@ -40,16 +40,9 @@ GROUNDING RULES (mandatory):
   "unknown", "not specified", or invented filler as if it were source content.
 
 FOLLOW-UP EMAIL:
-- Always draft a concise, ready-to-edit follow-up email based on the meeting.
-- Include only supported meeting facts, confirmed decisions (if any), and assigned
-  action items with their stated owners and deadlines.
-- Do not invent recipients' email addresses, sender identity, budget status, meeting
-  dates, or commitments. Address attendees collectively (for example, "Hi everyone")
-  only when attendee names are available; otherwise use "Hello".
-- If there are no confirmed decisions, omit the decisions section. If a deadline is
-  missing, say "Deadline not specified" or omit that deadline; do not invent one.
-- Keep it professional and concise. Return the email as a string with a subject line
-  and body, not null, unless the source is empty.
+- Do not draft an email or add a summary outside the JSON fields.
+- Set follow_up_email to an empty string. The backend creates the email only from
+  decisions and action items that pass source-evidence validation.
 
 OUTPUT FORMAT:
 Return valid JSON only, with exactly these top-level keys:
