@@ -72,7 +72,17 @@ def _raise_gnani_http_error(exc: Exception) -> None:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "moment-ai", "version": "0.4.0"}
+    return {
+        "status": "ok",
+        "service": "moment-ai",
+        "version": "0.4.0",
+        "integrations": {
+            "prisma_rest": bool(gnani.api_key_id and gnani.stt_endpoint),
+            "batch_stt": bool(gnani.api_key_id),
+            "timbre": bool(gnani.api_key_id and gnani.tts_endpoint),
+            "evon": bool(gnani.llm_endpoint),
+        },
+    }
 
 
 @app.post("/api/ingest")
