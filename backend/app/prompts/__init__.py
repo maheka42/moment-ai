@@ -20,8 +20,19 @@ GROUNDING RULES (mandatory):
 - For action items, include only tasks someone explicitly committed to doing or was
   explicitly assigned. Use null for an owner or deadline that is not stated.
 - Preserve names, dates, and meaning. Do not upgrade tentative language into certainty.
-- Evidence must quote or point to supplied source text. Do not fabricate page numbers
-  or timestamps. If precise evidence is unavailable, use a short source excerpt or null.
+- Every agenda item and discussion point must include an evidence field containing an
+  exact, contiguous excerpt copied from the source. If no excerpt supports it, omit it.
+- Every decision, action item, open question, and risk must include an evidence field
+  containing an exact, contiguous excerpt copied from the source. Do not paraphrase
+  inside the evidence field. If no exact excerpt supports the claim, omit the item.
+- For a decision, the decision description itself must be directly supported by its
+  evidence excerpt. A target date or intention is not a decision.
+- For an open question, the source excerpt must contain an actual question. Missing
+  information is not an open question.
+- For an action item, the task, owner, and deadline (when present) must all appear
+  in its evidence excerpt. Do not infer missing owners or deadlines.
+- Evidence must not fabricate page numbers or timestamps. Use only a short exact
+  source excerpt; never invent a citation.
 - Use null for missing scalar information and [] for missing lists. Never write
   "unknown", "not specified", or invented filler as if it were source content.
 
@@ -43,9 +54,14 @@ meeting_title, date, attendees, executive_summary, agenda, discussion_points,
 decisions, action_items, open_questions, risks_and_dependencies, follow_up_email.
 Use arrays for attendees, agenda, discussion_points, decisions, action_items,
 open_questions, and risks_and_dependencies. Each attendee should contain name and
-role (null if not stated). Each decision should contain description and evidence.
-Each action item should contain task, owner, deadline, and evidence. Use null for
-missing evidence. The follow_up_email value should contain the drafted email string.
+role (null if not stated). Each agenda item should contain item and evidence.
+Each discussion point should contain summary and evidence. Each decision should
+contain description and evidence. Each action item should contain task, owner,
+deadline, and evidence. Each open question should contain question and evidence.
+Each risk should contain description and evidence. Use null for missing scalar
+fields and empty arrays when no supported items exist. The backend will validate
+evidence and generate the follow-up email from validated decisions and action items;
+do not write the email independently. Set follow_up_email to an empty string.
 """
 
 STUDENT_SYSTEM_PROMPT = """You are MOMENT AI, a careful study-notes assistant.
