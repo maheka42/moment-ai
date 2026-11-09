@@ -5,6 +5,12 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").
 type Mode = "corporate" | "student";
 type Language = "en-IN" | "hi-IN" | "te-IN" | "ta-IN" | "kn-IN" | "ml-IN" | "mr-IN" | "bn-IN" | "gu-IN" | "pa-IN";
 
+const voiceByLanguage: Record<Language, string> = {
+  "en-IN": "Kaveri", "hi-IN": "Nalini", "te-IN": "Suhana",
+  "ta-IN": "Asmita", "kn-IN": "Saanvi", "ml-IN": "Reshma",
+  "mr-IN": "Zahira", "bn-IN": "Kirra", "gu-IN": "Falak", "pa-IN": "Mehuli",
+};
+
 type BatchResult = {
   job_id: string;
   status: string;
@@ -155,7 +161,7 @@ export default function App() {
       const response = await fetch(`${API_BASE}/api/narrate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: output, voice: "Nalini", language: "auto", speed: 1.0 }),
+        body: JSON.stringify({ text: output, voice: voiceByLanguage[language], language, speed: 1.0 }),
       });
       if (!response.ok) throw new Error(await readError(response));
       saveBlob(await response.blob(), "moment-ai-narration.mp3");
