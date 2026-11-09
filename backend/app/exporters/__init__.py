@@ -38,7 +38,7 @@ OMIT_KEYS = {"evidence", "source_evidence"}
 def _payload(body: str):
     """Parse model JSON when present; retain plain-text fallback."""
     candidate = body.strip()
-    candidate = re.sub(r"^\`\`\`(?:json)?\\s*|\\s*\`\`\`$", "", candidate, flags=re.I)
+    candidate = re.sub(r"^```(?:json)?\s*|\s*```$", "", candidate, flags=re.I)
     try:
         value = json.loads(candidate)
         return value if isinstance(value, dict) else None
