@@ -289,7 +289,7 @@ export default function App() {
                 <p>{mode === "corporate" ? "Get clear minutes, decisions, owners, deadlines and follow-ups." : "Get topic-wise notes, definitions, formulas, examples and revision questions."}</p>
               </div>
             </div>
-            <button className="button button-primary full-width" onClick={generate} disabled={!sourceText.trim() || !!busy}>
+            <button className="button button-primary full-width" onClick={generate} disabled={!!busy}>
               {busy === "generate" ? "Generating with Evon…" : "Generate output"}
               <span>↗</span>
             </button>
