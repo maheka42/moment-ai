@@ -45,13 +45,18 @@ Audio processing and model generation are not yet fully wired. Do not present th
 
 ## Tech stack
 
-- Python 3.11+
-- FastAPI
-- PyMuPDF
-- python-docx
-- ReportLab
+- Frontend: React + TypeScript + Vite
+- Backend: Python 3.11+ and FastAPI
+- PDF extraction: PyMuPDF
+- DOCX: python-docx
+- PDF export: ReportLab
+- Planned data layer: Firebase / Firestore
 
-A React + TypeScript frontend, Firebase/Firestore persistence, and source-grounded Q&A can be added in subsequent milestones.
+## Architecture
+
+See [docs/architecture.md](docs/architecture.md) for the eight logical layers, request flows, repository structure, and design rules.
+
+The React + TypeScript frontend scaffold is in `frontend/`. Firebase/Firestore persistence is planned but not connected yet. See [docs/architecture.md](docs/architecture.md) for the target modular-monolith design.
 
 ## Local setup
 
