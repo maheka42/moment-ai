@@ -11,14 +11,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .exporters import to_docx, to_pdf
-from .gnani import GnaniClient
+from .gnani import GnaniAPIError, GnaniClient
 from .services.ingestion import extract_pdf, extract_text_file, get_file_extension
 from .services.workflow import build_workflow_prompt
 
-app = FastAPI(title="MOMENT AI API", version="0.2.0")
+app = FastAPI(title="MOMENT AI API", version="0.3.0")
 gnani = GnaniClient.from_env()
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
-ALLOWED_EXTENSIONS = {".pdf", ".txt", ".mp3", ".wav", ".m4a", ".ogg", ".webm"}
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac"}
 
 origins = [
     item.strip()
@@ -47,15 +47,18 @@ class PrepareRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "moment-ai", "version": "0.2.0"}
+    return {"status": "ok", "service": "moment-ai", "version": "0.3.0"}
 
 
 @app.post("/api/ingest")
 async def ingest(
     file: UploadFile = File(...),
     mode: Literal["corporate", "student"] = Form("corporate"),
+    language_code: str = Form("indic-auto"),
+    audio_format: Literal["verbatim", "transcribe", "codemix", "transliterate"] = Form("transcribe"),
+    topic: str | None = Form(None),
 ) -> dict:
-    filename = file.filename or "upload"
+    filename = Path(file.filename or "upload").name
     suffix = get_file_extension(filename)
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=415, detail="Unsupported file type.")
@@ -67,21 +70,49 @@ async def ingest(
     if suffix == ".pdf":
         extracted = extract_pdf(data)
         source_type = "pdf"
+        metadata = {}
     elif suffix == ".txt":
         extracted = extract_text_file(data)
         source_type = "text"
+        metadata = {}
     else:
-        raise HTTPException(
-            status_code=501,
-            detail="Audio transcription is not connected yet. Prisma's verified API contract is required.",
-        )
+        try:
+            transcription = gnani.transcribe_with_prisma(
+                audio_bytes=data,
+                filename=filename,
+                language_code=language_code,
+                output_format=audio_format,
+                topic=topic,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except GnaniAPIError as exc:
+            status = exc.status_code if 400 <= exc.status_code < 600 else 502
+            raise HTTPException(
+                status_code=status,
+                detail={"message": str(exc), "error_type": exc.error_type},
+            ) from exc
+
+        extracted = transcription["transcript"]
+        source_type = "audio"
+        metadata = {
+            "model": transcription.get("model"),
+            "request_id": transcription.get("request_id"),
+            "detected_language_code": transcription.get("detected_language_code"),
+            "truncated": transcription.get("truncated", False),
+            "processing_time": transcription.get("processing_time"),
+            "end_to_end_latency": transcription.get("end_to_end_latency"),
+        }
 
     return {
-        "filename": Path(filename).name,
+        "filename": filename,
         "mode": mode,
         "source_type": source_type,
         "character_count": len(extracted),
         "text": extracted,
+        "metadata": metadata,
     }
 
 
