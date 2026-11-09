@@ -89,6 +89,30 @@ def validate_corporate_output(generated: str, source_text: str) -> str:
                 "action_items", "open_questions", "risks_and_dependencies",
             } else None
 
+    if data.get("meeting_title") and not _is_supported(data["meeting_title"], source_text):
+        data["meeting_title"] = None
+    if data.get("date") and not _is_supported(data["date"], source_text):
+        data["date"] = None
+
+    data["agenda"] = [
+        item for item in _safe_list(data["agenda"])
+        if isinstance(item, dict)
+        and isinstance(item.get("item"), str)
+        and _evidence_is_valid(item, source_text, ("item",))
+    ]
+    for item in data["agenda"]:
+        item.pop("evidence", None)
+
+    data["discussion_points"] = [
+        item for item in _safe_list(data["discussion_points"])
+        if isinstance(item, dict)
+        and isinstance(item.get("summary"), str)
+        and _evidence_is_valid(item, source_text, ("summary",))
+    ]
+    data["executive_summary"] = " ".join(
+        item["summary"] for item in data["discussion_points"]
+    ) or "No source-supported discussion summary could be extracted."
+
     data["attendees"] = [
         item for item in _safe_list(data["attendees"])
         if isinstance(item, dict)
@@ -126,7 +150,7 @@ def validate_corporate_output(generated: str, source_text: str) -> str:
         and _evidence_is_valid(item, source_text, ("description",))
     ]
 
-    for key in ("decisions", "action_items", "open_questions", "risks_and_dependencies"):
+    for key in ("discussion_points", "decisions", "action_items", "open_questions", "risks_and_dependencies"):
         for item in data[key]:
             item.pop("evidence", None)
 
