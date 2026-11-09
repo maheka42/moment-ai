@@ -35,13 +35,24 @@ API request formats must follow the current Gnani API documentation. The adapter
 
 ## Current implementation
 
-- FastAPI backend starter.
-- PDF and TXT ingestion.
-- Export helpers for PDF and DOCX.
-- Corporate and student prompt templates.
+- FastAPI backend with CORS configured for the local Vite frontend.
+- PDF and TXT extraction separated into an ingestion service, with PDF page references preserved.
+- Upload size and file-extension validation.
+- Corporate and student prompt preparation endpoint (`POST /api/prepare`). This prepares a prompt only; it does not call an LLM.
+- Explicit `503` response from `POST /api/process` until a supported Evon runtime is configured.
+- PDF and editable DOCX export endpoint (`POST /api/export`).
+- Unit tests for ingestion and prompt preparation under `backend/tests/`.
 - Gnani API adapter placeholders pending confirmation of exact API contracts.
 
-Audio processing and model generation are not yet fully wired. Do not present this repository as a complete working application until those integrations and end-to-end tests are complete.
+Audio transcription, AI generation, narration, database persistence, and end-to-end frontend integration are not yet implemented. Do not present this repository as a complete working application until those integrations and end-to-end tests are complete.
+
+### Backend API routes
+
+- `GET /health` — service health.
+- `POST /api/ingest` — PDF/TXT upload and text extraction. Audio currently returns `501`.
+- `POST /api/prepare` — prepare a corporate or student prompt from supplied text.
+- `POST /api/process` — reserved for Evon inference; currently returns `503`.
+- `POST /api/export` — create a PDF or DOCX from supplied title and text.
 
 ## Tech stack
 
