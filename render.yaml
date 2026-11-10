@@ -3,6 +3,7 @@ services:
     name: moment-ai-api
     runtime: python
     plan: free
+    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
@@ -11,8 +12,20 @@ services:
         value: 3.11.9
       - key: CORS_ORIGINS
         value: https://moment-ai-web.onrender.com
+      - key: MAX_UPLOAD_MB
+        value: 50
+      - key: GNANI_BASE_URL
+        value: https://api.vachana.ai
       - key: GNANI_API_KEY_ID
         sync: false
+      - key: GNANI_STT_ENDPOINT
+        value: https://api.vachana.ai/stt/v3
+      - key: GNANI_PRISMA_MODEL
+        value: prisma-v3.0
+      - key: GNANI_BATCH_STT_MODEL
+        value: gnani-prisma-v2.5
+      - key: GNANI_TTS_ENDPOINT
+        value: https://api.vachana.ai/api/v1/tts/inference
       - key: LLM_API_URL
         value: https://api.groq.com/openai/v1/chat/completions
       - key: LLM_API_KEY
@@ -23,6 +36,7 @@ services:
   - type: static
     name: moment-ai-web
     rootDir: frontend
+    autoDeploy: true
     buildCommand: npm install --no-package-lock && npm run build
     staticPublishPath: ./dist
     envVars:
