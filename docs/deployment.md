@@ -2,44 +2,51 @@
 
 ## Deploy with Render Blueprint
 
-The repository includes a Render Blueprint in render.yaml. It defines:
-- A Python 3.11 FastAPI service named moment-ai-api.
-- A static React/Vite frontend named moment-ai-web.
-- A backend health check at /health.
-- Frontend API configuration and backend CORS configuration for the generated Render URLs.
+The repository includes `render.yaml`, which provisions two services:
+- `moment-ai-api`: Python 3.11 FastAPI backend, with `/health` health checks.
+- `moment-ai-web`: React/Vite static frontend, configured to call the backend URL.
 
-### Steps
+The Blueprint explicitly configures the Gnani Prisma, Batch STT, and Timbre endpoints and the Groq chat-completions endpoint. Automatic deploys are enabled for pushes to the connected branch.
 
-1. Push the latest main branch to GitHub.
-2. In Render, choose New → Blueprint and select maheka42/moment-ai.
-3. Review the two services and deploy the Blueprint.
-4. When prompted, enter the private values for GNANI_API_KEY_ID and LLM_API_KEY. Do not put either key in GitHub.
-5. Wait until both services are live.
+### Deploy steps
+
+1. Push the latest `main` branch to GitHub.
+2. Sign in at [Render](https://dashboard.render.com/).
+3. Select **New + → Blueprint**.
+4. Connect the GitHub repository `maheka42/moment-ai` and select the `main` branch.
+5. Review the two services from `render.yaml`.
+6. Enter the two secret values when Render prompts:
+   - `GNANI_API_KEY_ID`: your Gnani API Key ID.
+   - `LLM_API_KEY`: your Groq API key.
+7. Apply the Blueprint and wait for both services to finish deploying.
+
+Do not put API keys in GitHub, source files, screenshots, or chat messages. Enter them only in Render's secret environment-variable fields.
+
+### Deployed URLs
+
+- Frontend: `https://moment-ai-web.onrender.com`
+- Backend health: `https://moment-ai-api.onrender.com/health`
+- Backend API docs: `https://moment-ai-api.onrender.com/docs`
+
+If either generated service URL differs because the name is unavailable, update `CORS_ORIGINS` on the backend and `VITE_API_BASE_URL` on the frontend to the actual URLs, then redeploy both services.
 
 ### Verify after deployment
 
-- Open https://moment-ai-api.onrender.com/health. Confirm the service reports status: ok and that the required llm integration is true.
-- Open https://moment-ai-web.onrender.com and generate a corporate and a student output.
-- Test PDF and DOCX export.
-- Test audio upload/transcription and MP3 narration with real Gnani credentials.
-- Check the Render service logs if a provider returns an error.
+1. Open the backend health URL. Confirm `status` is `ok` and `integrations.llm`, `integrations.prisma_rest`, `integrations.batch_stt`, and `integrations.timbre` are `true`.
+2. Open the frontend and test text input in both Corporate and Student modes.
+3. Test PDF and DOCX exports.
+4. Test a small audio upload/transcription with Gnani credentials.
+5. Test MP3 narration separately.
 
-### Required secrets and configuration
+The health endpoint confirms that configuration values are present; it does not validate provider credentials or provider availability. A successful text-generation request is the practical check for Groq connectivity.
 
-| Variable | Purpose |
-|---|---|
-| GNANI_API_KEY_ID | Gnani Prisma and Timbre API access |
-| LLM_API_KEY | Groq API key |
-| LLM_API_URL | Defaults to the Groq chat-completions endpoint in the Blueprint |
-| LLM_MODEL | Defaults to openai/gpt-oss-120b |
-| CORS_ORIGINS | Must include the exact deployed frontend origin |
-| VITE_API_BASE_URL | Must point to the deployed FastAPI service |
+### Known provider limitation
 
-If you use custom domains, update CORS_ORIGINS and VITE_API_BASE_URL to match them, then redeploy the frontend so the Vite build receives the correct API URL.
+A local Timbre v2.5 narration test previously reached the Gnani API but received HTTP 503 with a generic provider-side technical-difficulties message. Deploying to Render will not fix a provider-side 503. If narration still returns 503 after deployment, check the Gnani dashboard for Timbre access/credits and retry later or contact Gnani support. The rest of the app can be deployed and tested independently.
 
-## Deployment limitations
+### Deployment limitations
 
 - Render free services may sleep when idle and take time to wake.
 - Real provider connectivity cannot be proven by CI because API credentials are intentionally not stored in the repository.
-- The /health endpoint verifies configuration presence, not whether provider credentials are accepted. Run the live smoke tests above after deployment.
-- The corporate validator is deliberately conservative: a decision, action item, question, or risk without an exact source excerpt is omitted. If the model returns invalid JSON, generation fails with a clear 502 rather than showing unvalidated minutes.
+- The corporate validator is deliberately conservative: a decision, action item, question, or risk without an exact source excerpt is omitted.
+- If the model returns invalid JSON, generation fails with a clear 502 rather than showing unvalidated minutes.
