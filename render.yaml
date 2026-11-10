@@ -33,10 +33,10 @@ services:
       - key: LLM_MODEL
         value: openai/gpt-oss-120b
 
-  - type: static
+  - type: web
     name: moment-ai-web
+    runtime: static
     rootDir: frontend
-    autoDeploy: true
     buildCommand: npm install --no-package-lock && npm run build
     staticPublishPath: ./dist
     envVars:
